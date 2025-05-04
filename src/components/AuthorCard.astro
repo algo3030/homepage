@@ -1,0 +1,79 @@
+---
+export interface Props {
+    data: {
+        name: string;
+        avatar?: string;
+        bio?: string;
+        socials?: { twitter?: string; github?: string };
+    };
+    /** メイン著者かどうか（true ならラベルを付ける） */
+    isMain?: boolean;
+}
+
+const { data, isMain = false } = Astro.props;
+const { name, avatar, bio, socials } = data;
+---
+
+<div class="author-card">
+    {
+        avatar && (
+            <img
+                src={avatar}
+                alt={`${name} のアバター`}
+                width="128"
+                height="128"
+            />
+        )
+    }
+
+    <div>
+        <h4>{name}</h4>
+        {bio && <p class="bio">{bio}</p>}
+        <p class="social">
+            {
+                socials?.twitter && (
+                    <a href={socials.twitter} target="_blank" rel="noopener">
+                        X
+                    </a>
+                )
+            }
+            {
+                socials?.github && (
+                    <a href={socials.github} target="_blank" rel="noopener">
+                        GitHub
+                    </a>
+                )
+            }
+        </p>
+    </div>
+</div>
+
+<style>
+    .author-card {
+        display: flex;
+        gap: 1.3rem;
+        align-items: flex-start;
+        padding: 1rem;
+    }
+    .author-card img {
+        border-radius: 50%;
+        aspect-ratio: 1;
+    }
+    .label {
+        margin: 0;
+        font-size: 0.85rem;
+    }
+    .author-card h4 {
+        margin: 0;
+        font-size: 2rem;
+    }
+    .bio {
+        margin: 0.5rem 0 0.5rem;
+        font-size: 0.9rem;
+    }
+    .social a {
+        margin-right: 0.7rem;
+        font-size: 0.95rem;
+        text-decoration: none;
+    }
+</style>

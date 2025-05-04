@@ -1,20 +1,38 @@
 ---
-import BaseHead from "../../components/BaseHead.astro";
-import Header from "../../components/Header.astro";
-import Footer from "../../components/Footer.astro";
-import { SITE_TITLE, SITE_DESCRIPTION } from "../../consts";
-import { getCollection } from "astro:content";
-import FormattedDate from "../../components/FormattedDate.astro";
-import BaseLayout from "../../layouts/BaseLayout.astro";
+import { type CollectionEntry, getCollection } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import FormattedDate from "../../../components/FormattedDate.astro";
 
-const posts = (await getCollection("blog")).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
-);
+type BlogPost = CollectionEntry<"blog">;
+
+export async function getStaticPaths() {
+	const posts = await getCollection("blog");
+
+	// 全タグを収集（存在しないものは除外）
+	const tags = posts.map((post: BlogPost) => post.data.tags ?? []).flat();
+
+	// 重複を除く
+	const uniqueTags = [...new Set(tags)];
+
+	return uniqueTags.map((tag) => {
+		const filteredPosts = posts.filter((post) =>
+			post.data.tags?.includes(tag),
+		);
+		return {
+			params: { tag },
+			props: { posts: filteredPosts },
+		};
+	});
+}
+
+const { tag } = Astro.params;
+const { posts } = Astro.props;
 ---
 
-<BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
+<BaseLayout title={tag} description=`タグ：${tag}を含む記事`>
 	<main>
 		<section>
+			<h3>タグ：「{tag}」が付けられた記事</h3>
 			<ul>
 				{
 					posts.map((post) => (
@@ -41,33 +59,29 @@ const posts = (await getCollection("blog")).sort(
 
 <style>
 	main {
-		width: 960px;
+		width: calc(100% - 12em);
+	}
+	.intro {
+		padding-bottom: 2em;
+		text-align: center;
+	}
+	.intro p {
+		color: rgb(var(--gray));
 	}
 	ul {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 2rem;
+		gap: 1rem;
 		list-style-type: none;
 		margin: 0;
 		padding: 0;
 	}
 	ul li {
-		width: calc(50% - 1rem);
+		width: calc(25% - 1rem);
 	}
 	ul li * {
 		text-decoration: none;
 		transition: 0.2s ease;
-	}
-	ul li:first-child {
-		width: 100%;
-		margin-bottom: 1rem;
-		text-align: center;
-	}
-	ul li:first-child img {
-		width: 100%;
-	}
-	ul li:first-child .title {
-		font-size: 2.369rem;
 	}
 	ul li img {
 		margin-bottom: 0.5rem;
@@ -88,7 +102,7 @@ const posts = (await getCollection("blog")).sort(
 
 	ul li a {
 		padding: 1em;
-		border-radius: 0em;
+		background-color: transparent;
 		border-radius: 1em;
 	}
 

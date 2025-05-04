@@ -1,0 +1,39 @@
+---
+import { type CollectionEntry, getCollection } from "astro:content";
+import { render } from "astro:content";
+import BlogPostLayout from "../../layouts/BlogPostLayout.astro";
+
+export async function getStaticPaths() {
+	const posts = await getCollection("blog");
+	return posts.map((post) => ({
+		params: { slug: post.id },
+		props: post,
+	}));
+}
+type Props = CollectionEntry<"blog">;
+
+const post = Astro.props;
+const { Content, headings } = await render(post);
+
+const validHeadings = headings.filter((heading) => heading.depth === 2);
+---
+
+<BlogPostLayout {...post.data} headings={validHeadings}>
+	<div class="post-body"><Content /></div>
+</BlogPostLayout>
+
+<style is:global>
+	.post-body * + :is(h1, h2, h3, h4, h5, h6) {
+		margin-top: 3rem;
+	}
+
+	.post-body h2 {
+		background-color: var(--surface);
+		border-left: 10px solid var(--accent);
+		padding: 0.3em;
+	}
+
+	.post-body p {
+		padding: 0 0.5em;
+	}
+</style>

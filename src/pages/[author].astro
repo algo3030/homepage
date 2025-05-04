@@ -1,0 +1,126 @@
+---
+import { type CollectionEntry, getCollection, getEntry } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import FormattedDate from "../components/FormattedDate.astro";
+import AuthorCard from "../components/AuthorCard.astro";
+
+type BlogPost = CollectionEntry<"blog">;
+
+export async function getStaticPaths() {
+    const posts = await getCollection("blog");
+
+    // メイン著者 + 共著者をまとめて抽出
+    const authorRefs = posts.flatMap((post) => {
+        const { author, coauthors = [] } = post.data;
+        return [author, ...coauthors]; // いずれも {collection:"authors", id:string}
+    });
+
+    // 重複を除いたスラッグ一覧
+    const uniqueAuthors = [...new Set(authorRefs.map((ref) => ref.id))];
+
+    // 著者ごとの記事を props に載せる
+    return uniqueAuthors.map((slug) => {
+        const filtered = posts.filter((p) => {
+            const { author, coauthors = [] } = p.data;
+            const hitsMain = author.id === slug;
+            const hitsCo = coauthors.some((c) => c.id === slug);
+            return hitsMain || hitsCo;
+        });
+
+        return {
+            params: { author: slug },
+            props: { posts: filtered },
+        };
+    });
+}
+
+const { author } = Astro.params; // URL パラメータ (/authors/[author])
+const { posts } = Astro.props; // getStaticPaths から供給
+const authorEntry = await getEntry("authors", author); // 著者メタ
+const authorData = authorEntry?.data;
+---
+
+<BaseLayout
+    title={authorData ? `${authorData.name} の記事一覧` : author}
+    description={`${authorData?.name ?? author} が書いた（共著含む）記事`}
+>
+    <main>
+        <section>
+            <h3>{authorData?.name ?? author} の記事一覧</h3>
+
+            {posts.length === 0 && <p>まだ記事がありません。</p>}
+
+            <ul>
+                {
+                    posts.map((post) => (
+                        <li>
+                            <a href={`/blog/${post.id}/`}>
+                                {post.data.heroImage && (
+                                    <img
+                                        width={720}
+                                        height={360}
+                                        src={post.data.heroImage}
+                                        alt=""
+                                    />
+                                )}
+                                <h4 class="title">{post.data.title}</h4>
+                                <p class="date">
+                                    <FormattedDate date={post.data.pubDate} />
+                                </p>
+                            </a>
+                        </li>
+                    ))
+                }
+            </ul>
+        </section>
+    </main>
+</BaseLayout>
+
+<style>
+    main {
+        width: calc(100% - 12em);
+    }
+    ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    ul li {
+        width: calc(25% - 1rem);
+    }
+    ul li a {
+        display: block;
+        padding: 1em;
+        border-radius: 1em;
+        text-decoration: none;
+        transition: 0.2s ease;
+    }
+    ul li a:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+    ul li img {
+        margin-bottom: 0.5rem;
+        border-radius: 12px;
+    }
+    .title {
+        margin: 0;
+        color: rgb(var(--text));
+        line-height: 1;
+    }
+    .date {
+        margin: 0;
+        color: rgb(var(--gray));
+    }
+    @media (max-width: 720px) {
+        ul {
+            gap: 0.5em;
+        }
+        ul li {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>

@@ -1,0 +1,235 @@
+---
+import { getEntry } from "astro:content";
+import type { CollectionEntry } from "astro:content";
+import type { MarkdownHeading } from "astro";
+import FormattedDate from "../components/FormattedDate.astro";
+import AuthorCard from "../components/AuthorCard.astro";
+import BaseLayout from "./BaseLayout.astro";
+
+type Props = CollectionEntry<"blog">["data"] & {
+	headings: MarkdownHeading[];
+};
+
+const {
+	title,
+	tags,
+	description,
+	pubDate,
+	updatedDate,
+	heroImage,
+	headings,
+	author: authorRef,
+	coauthors: coauthorRefs = [],
+} = Astro.props;
+
+const mainAuthor = await getEntry(authorRef.collection, authorRef.id);
+const coauthorEntries = (
+	await Promise.all(
+		coauthorRefs.map((ref) => getEntry(ref.collection, ref.id)),
+	)
+).filter(Boolean);
+---
+
+<BaseLayout {title} {description}>
+	<main>
+		<article>
+			<div class="hero-image">
+				{
+					heroImage && (
+						<img width={1020} height={510} src={heroImage} alt="" />
+					)
+				}
+			</div>
+
+			<div class="prose">
+				<!-- タイトル & メタ -->
+				<div class="title">
+					<div class="meta-info">
+						<FormattedDate date={pubDate} />
+						{
+							updatedDate && (
+								<div class="last-updated-on">
+									Last updated on{" "}
+									<FormattedDate date={updatedDate} />
+								</div>
+							)
+						}
+						<div>
+							author: <a href=`/${authorRef.id}`
+								>{mainAuthor.data.name}</a
+							>
+						</div>
+					</div>
+
+					<h1>{title}</h1>
+
+					{
+						tags && (
+							<ul class="tag-list">
+								{tags.map((tag) => (
+									<li>
+										<a
+											class="tag"
+											href={`/blog/tags/${tag}`}
+										>
+											{tag}
+										</a>
+									</li>
+								))}
+							</ul>
+						)
+					}
+
+					<hr />
+				</div>
+
+				<slot />
+
+				<hr />
+
+				<AuthorCard data={mainAuthor.data} isMain />
+				{coauthorEntries.map((a) => <AuthorCard data={a.data} />)}
+			</div>
+		</article>
+
+		<aside id="toc">
+			<h3 id="toc-header">目次</h3>
+			<hr />
+			{
+				headings.length > 0 && (
+					<nav class="sidebar">
+						<ul>
+							{headings.map((h) => (
+								<li>
+									<a
+										href={`#${h.slug}`}
+										class="toc-link"
+										data-id={h.slug}
+									>
+										{h.text}
+									</a>
+								</li>
+							))}
+						</ul>
+					</nav>
+				)
+			}
+		</aside>
+	</main>
+</BaseLayout>
+
+<style>
+	main {
+		display: flex;
+		width: calc(90% - 2em);
+		margin: 0 auto;
+	}
+	article {
+		flex: 3;
+	}
+	aside {
+		flex: 1;
+		padding: 0 2em 0;
+		position: sticky;
+		top: 3rem;
+		height: fit-content;
+		margin: 0 auto;
+	}
+	hr {
+		border-top: 1px solid rgb(var(--gray));
+	}
+	#toc {
+		font-size: 0.9rem;
+	}
+	#toc-header {
+		padding-bottom: 0.25em;
+	}
+	.toc-link {
+		display: block;
+		padding: 0.5em 0;
+		color: rgb(var(--gray));
+		text-decoration: none;
+		transition:
+			0.2s,
+			color 0.2s;
+	}
+	.toc-link.active {
+		color: rgb(var(--text));
+		font-weight: bold;
+	}
+
+	ul {
+		list-style: none;
+		padding-left: 0;
+	}
+	.tag-list {
+		display: flex;
+		gap: 0.5rem;
+		margin: 1.5rem 0em;
+		font-size: 0.9rem;
+	}
+	.tag {
+		background-color: var(--accent-dark);
+		padding: 0.5rem;
+		border-radius: 1rem;
+		text-decoration: none;
+	}
+
+	.prose {
+		margin: auto;
+		color: rgb(var(--text));
+	}
+	.title {
+		margin-bottom: 1em;
+		padding: 1em 0;
+		line-height: 1;
+	}
+
+	.meta-info {
+		display: flex;
+		gap: 1rem;
+		margin-bottom: 0.5em;
+		color: rgb(var(--gray));
+	}
+	.meta-info a {
+		text-decoration: none;
+		color: var(--accent);
+		font-weight: 300;
+	}
+
+	.last-updated-on {
+		font-style: italic;
+	}
+
+	@media (max-width: 1000px) {
+		aside {
+			display: none;
+		}
+	}
+</style>
+
+<script type="module" is:inline>
+	window.addEventListener("DOMContentLoaded", () => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					const id = entry.target.getAttribute("id");
+					const link = document.querySelector(
+						`.toc-link[data-id="${id}"]`,
+					);
+					if (entry.isIntersecting) {
+						document
+							.querySelectorAll(".toc-link")
+							.forEach((el) => el.classList.remove("active"));
+						link?.classList.add("active");
+					}
+				});
+			},
+			{ rootMargin: "0px 0px -80% 0px", threshold: 0.1 },
+		);
+
+		document.querySelectorAll("h2[id]").forEach((section) => {
+			observer.observe(section);
+		});
+	});
+</script>
